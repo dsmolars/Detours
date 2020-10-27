@@ -20,29 +20,29 @@ VS_VCVARS_64 = os.path.join(
     VS_INSTALL_DIR, 'VC', 'Auxiliary', 'Build', 'vcvars64.bat')
 
 if '__main__' == __name__:
-    nmake_commands = ['"', VS_VCVARS_64, '" && ', 'nmake', ' && ', 'exit']
-    nmake_process = subprocess.Popen(
-        'cmd /K " {0} "'.format(''.join(nmake_commands)),
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        shell=True,
-        # cwd=os.environ['TEMP']
-    )
-    MAX_TIMEOUT_COUNT = 32
-    timeout_counter = 0
-    while MAX_TIMEOUT_COUNT > timeout_counter:
-        try:
-            nmake_process.wait(timeout=1)
-            nmake_stdout, nmake_stderr = nmake_process.communicate()
-            print(nmake_stdout.decode('utf-8'))
-            print(nmake_stderr.decode('utf-8'))
-        except subprocess.TimeoutExpired as timeout_expired:
-            print('nmake build', timeout_counter, 'sec')
-        timeout_counter = timeout_counter + 1
-    nmake_process.kill()
-    if nmake_process.returncode is None:
-        print('NMake build process terminated')
-    elif 0 != nmake_process.returncode:
-        print('NMake build failed')
+    config = 'release'
+    architecture = 'x64'
+    nmake_build_batch_path = os.path.abspath(os.path.join(
+        'build', 'output', 'windows', config, architecture, 'nmake_build.bat'))
+    os.makedirs(os.path.dirname(nmake_build_batch_path),
+                exist_ok=True, mode=0o644)
+    with open(nmake_build_batch_path, 'w+') as nmake_build_batch:
+        nmake_build_batch.write(
+            'pushd {0}\n'.format(os.path.abspath(os.path.dirname(__file__))))
+        if 'x64' == architecture:
+            nmake_build_batch.write('call "{0}"\n'.format(VS_VCVARS_64))
+        elif 'x86' == architecture:
+            nmake_build_batch.write('call "{0}"\n'.format(VS_VCVARS_32))
+        else:
+            raise Exception('Unsupported architecture', architecture)
+        nmake_build_batch.write('nmake\n')
+        nmake_build_batch.write('popd\n')
+    nmake_result = subprocess.run(
+        [nmake_build_batch_path],
+        cwd=os.path.dirname(nmake_build_batch_path),
+        capture_output=True)
+    if 0 == nmake_result.returncode:
+        print(nmake_result.stdout.decode('utf-8'))
     else:
-        print('NMake build succeeded')
+        print(nmake_result.stderr.decode('utf-8'))
+        raise Exception('NMake build failed')
