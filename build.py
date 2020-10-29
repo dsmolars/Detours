@@ -22,8 +22,9 @@ VS_VCVARS_64 = os.path.join(
 if '__main__' == __name__:
     config = 'release'
     architecture = 'x64'
-    nmake_build_batch_path = os.path.abspath(os.path.join(
-        'build', 'output', 'windows', config, architecture, 'nmake_build.bat'))
+    nmake_output_dir = (os.path.abspath(os.path.join(
+        'build', 'output', 'windows', config, architecture)))
+    nmake_build_batch_path = os.path.join(nmake_output_dir, 'nmake_build.bat')
     os.makedirs(os.path.dirname(nmake_build_batch_path),
                 exist_ok=True, mode=0o644)
     with open(nmake_build_batch_path, 'w+') as nmake_build_batch:
@@ -36,12 +37,16 @@ if '__main__' == __name__:
         else:
             raise Exception('Unsupported architecture', architecture)
         nmake_build_batch.write('if %ERRORLEVEL% neq 0 exit 1\n')
-        nmake_build_batch.write('nmake\n')
+        nmake_build_batch.write('nmake /E\n')
         nmake_build_batch.write('if %ERRORLEVEL% neq 0 exit 1\n')
         nmake_build_batch.write('popd\n')
+    nmake_env = os.environ.copy()
+    nmake_env['BIND'] = os.path.join(nmake_output_dir, 'bin')
+    nmake_env['LIBD'] = os.path.join(nmake_output_dir, 'lib')
     nmake_result = subprocess.run(
         [nmake_build_batch_path],
         cwd=os.path.dirname(nmake_build_batch_path),
+        env=nmake_env,
         capture_output=True)
     print(nmake_result.stdout.decode('utf-8'))
     if 0 != nmake_result.returncode:
