@@ -35,14 +35,15 @@ if '__main__' == __name__:
             nmake_build_batch.write('call "{0}"\n'.format(VS_VCVARS_32))
         else:
             raise Exception('Unsupported architecture', architecture)
+        nmake_build_batch.write('if %ERRORLEVEL% neq 0 exit 1\n')
         nmake_build_batch.write('nmake\n')
+        nmake_build_batch.write('if %ERRORLEVEL% neq 0 exit 1\n')
         nmake_build_batch.write('popd\n')
     nmake_result = subprocess.run(
         [nmake_build_batch_path],
         cwd=os.path.dirname(nmake_build_batch_path),
         capture_output=True)
-    if 0 == nmake_result.returncode:
-        print(nmake_result.stdout.decode('utf-8'))
-    else:
+    print(nmake_result.stdout.decode('utf-8'))
+    if 0 != nmake_result.returncode:
         print(nmake_result.stderr.decode('utf-8'))
         raise Exception('NMake build failed')
